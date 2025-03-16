@@ -1,7 +1,7 @@
 import * as cornerstone from "cornerstone-core";
 import * as cornerstoneWADOImageLoader from "cornerstone-wado-image-loader";
 import * as dicomParser from "dicom-parser";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
 cornerstoneWADOImageLoader.external.dicomParser = dicomParser;
@@ -29,17 +29,14 @@ const App = () => {
 
     cornerstone
       .loadImage(loadedImageIds[0])
-      .then((image: any) => cornerstone.displayImage(element, image))
-      .catch((err: any) => console.error("DICOM 加載失敗", err));
+      .then((image: unknown) => cornerstone.displayImage(element, image))
+      .catch((err: unknown) => console.error("DICOM 加載失敗", err));
 
     return () => cornerstone.disable(element);
   }, [dicomFiles]);
 
-  useEffect(() => {
-    const element = dicomViewerRef.current;
-    if (!element) return;
-
-    const handleWheel = (event: WheelEvent) => {
+  const handleWheel = useCallback(
+    (event: WheelEvent) => {
       if (imageIds.length <= 1) return;
 
       let newSlice = currentSlice + (event.deltaY > 0 ? 1 : -1);
@@ -48,13 +45,21 @@ const App = () => {
 
       cornerstone
         .loadImage(imageIds[newSlice])
-        .then((image: any) => cornerstone.displayImage(element, image))
-        .catch((err: any) => console.error("無法載入 slice", err));
-    };
+        .then((image: unknown) =>
+          cornerstone.displayImage(dicomViewerRef.current!, image)
+        )
+        .catch((err: unknown) => console.error("無法載入 slice", err));
+    },
+    [imageIds, currentSlice]
+  );
+
+  useEffect(() => {
+    const element = dicomViewerRef.current;
+    if (!element) return;
 
     element.addEventListener("wheel", handleWheel);
     return () => element.removeEventListener("wheel", handleWheel);
-  }, [imageIds, currentSlice]);
+  }, [handleWheel]);
 
   return (
     <div
